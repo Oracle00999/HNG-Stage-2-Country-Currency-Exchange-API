@@ -13,6 +13,55 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
 
+// Auto-create tables on startup
+async function initializeDatabase() {
+  try {
+    console.log("🔄 Initializing database tables...");
+    const connection = await db.getConnection();
+
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS countries (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL UNIQUE,
+        capital VARCHAR(255),
+        region VARCHAR(255),
+        population BIGINT NOT NULL,
+        currency_code VARCHAR(10),
+        exchange_rate DECIMAL(20, 6),
+        estimated_gdp DECIMAL(30, 6),
+        flag_url TEXT,
+        last_refreshed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )
+    `);
+
+    console.log("✅ Countries table created/verified");
+
+    // Create indexes
+    await connection.execute(
+      "CREATE INDEX IF NOT EXISTS idx_region ON countries(region)"
+    );
+    await connection.execute(
+      "CREATE INDEX IF NOT EXISTS idx_currency_code ON countries(currency_code)"
+    );
+    await connection.execute(
+      "CREATE INDEX IF NOT EXISTS idx_estimated_gdp ON countries(estimated_gdp)"
+    );
+    await connection.execute(
+      "CREATE INDEX IF NOT EXISTS idx_name ON countries(name)"
+    );
+
+    connection.release();
+    console.log("✅ Database indexes created");
+  } catch (error) {
+    console.error("❌ Database initialization failed:", error.message);
+  }
+}
+
+// Initialize database when server starts
+initializeDatabase();
+
 // Global refresh timestamp
 let lastRefreshTimestamp = null;
 
