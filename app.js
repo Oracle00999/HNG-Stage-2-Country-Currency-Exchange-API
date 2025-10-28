@@ -38,7 +38,7 @@ async function initializeDatabase() {
 
     console.log("✅ Countries table created/verified");
 
-    // Create indexes safely
+    // Create indexes safely with error handling
     const indexQueries = [
       "DROP INDEX IF EXISTS idx_region ON countries",
       "CREATE INDEX idx_region ON countries(region)",
@@ -52,7 +52,7 @@ async function initializeDatabase() {
 
     for (const query of indexQueries) {
       try {
-        await connection.query(query); // Use query() instead of execute()
+        await connection.query(query);
       } catch (err) {
         // Ignore errors for DROP INDEX IF EXISTS (if index doesn't exist)
         if (err.code !== "ER_BAD_INDEX" && err.code !== "ER_NO_SUCH_INDEX") {
@@ -510,8 +510,16 @@ app.listen(PORT, async () => {
 });
 
 // Initialize server
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`🚀 Server running on port ${PORT}`);
   ensureCacheDir();
   console.log("✅ Cache directory ready");
+
+  // Wait for 5 seconds to ensure DB is ready and routes are loaded
+  await new Promise((r) => setTimeout(r, 5000));
+
+  // Only auto-refresh if not in development or if desired
+  if (process.env.NODE_ENV !== "development") {
+    await autoRefresh();
+  }
 });
