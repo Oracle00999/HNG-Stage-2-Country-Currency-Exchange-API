@@ -506,16 +506,16 @@ async function autoRefresh() {
 }
 
 // Call auto-refresh after server starts
-app.listen(PORT, async () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  ensureCacheDir();
-  console.log("✅ Cache directory ready");
+// app.listen(PORT, async () => {
+//   console.log(`🚀 Server running on port ${PORT}`);
+//   ensureCacheDir();
+//   console.log("✅ Cache directory ready");
 
-  // Only auto-refresh if not in development or if desired
-  if (process.env.NODE_ENV !== "development") {
-    await autoRefresh();
-  }
-});
+//   // Only auto-refresh if not in development or if desired
+//   if (process.env.NODE_ENV !== "development") {
+//     await autoRefresh();
+//   }
+// });
 
 // Initialize server
 app.listen(PORT, async () => {
