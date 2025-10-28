@@ -38,26 +38,28 @@ async function initializeDatabase() {
 
     console.log("✅ Countries table created/verified");
 
-    // Create indexes safely: DROP IF EXISTS then CREATE
-    await connection.execute("DROP INDEX IF EXISTS idx_region ON countries");
-    await connection.execute("CREATE INDEX idx_region ON countries(region)");
+    // Create indexes safely
+    const indexQueries = [
+      "DROP INDEX IF EXISTS idx_region ON countries",
+      "CREATE INDEX idx_region ON countries(region)",
+      "DROP INDEX IF EXISTS idx_currency_code ON countries",
+      "CREATE INDEX idx_currency_code ON countries(currency_code)",
+      "DROP INDEX IF EXISTS idx_estimated_gdp ON countries",
+      "CREATE INDEX idx_estimated_gdp ON countries(estimated_gdp)",
+      "DROP INDEX IF EXISTS idx_name ON countries",
+      "CREATE INDEX idx_name ON countries(name)",
+    ];
 
-    await connection.execute(
-      "DROP INDEX IF EXISTS idx_currency_code ON countries"
-    );
-    await connection.execute(
-      "CREATE INDEX idx_currency_code ON countries(currency_code)"
-    );
-
-    await connection.execute(
-      "DROP INDEX IF EXISTS idx_estimated_gdp ON countries"
-    );
-    await connection.execute(
-      "CREATE INDEX idx_estimated_gdp ON countries(estimated_gdp)"
-    );
-
-    await connection.execute("DROP INDEX IF EXISTS idx_name ON countries");
-    await connection.execute("CREATE INDEX idx_name ON countries(name)");
+    for (const query of indexQueries) {
+      try {
+        await connection.query(query); // Use query() instead of execute()
+      } catch (err) {
+        // Ignore errors for DROP INDEX IF EXISTS (if index doesn't exist)
+        if (err.code !== "ER_BAD_INDEX" && err.code !== "ER_NO_SUCH_INDEX") {
+          throw err;
+        }
+      }
+    }
 
     connection.release();
     console.log("✅ Database indexes created");
