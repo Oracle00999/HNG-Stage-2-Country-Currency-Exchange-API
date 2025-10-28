@@ -161,6 +161,9 @@ async function generateSummaryImage() {
 app.post("/countries/refresh", async (req, res) => {
   const connection = await db.getConnection();
 
+  // Helper to replace undefined → null
+  const safe = (v) => (v === undefined ? null : v);
+
   try {
     console.log("🔄 Starting countries refresh...");
 
@@ -193,50 +196,59 @@ app.post("/countries/refresh", async (req, res) => {
     let inserted = 0;
 
     for (const c of countries) {
-      const name = c.name?.common || "N/A";
-      const capital = c.capital?.[0] || null;
-      const region = c.region || null;
-      const population = c.population || 0;
-      const flag = c.flags?.png || c.flags?.svg || null;
-      const currencyCode = c.currencies ? Object.keys(c.currencies)[0] : null;
+      try {
+        const name = safe(c.name?.common || "N/A");
+        const capital = safe(c.capital?.[0] || null);
+        const region = safe(c.region || null);
+        const population = safe(c.population || 0);
+        const flag = safe(c.flags?.png || c.flags?.svg || null);
+        const currencyCode = safe(
+          c.currencies ? Object.keys(c.currencies)[0] : null
+        );
 
-      let exchangeRate = null;
-      let estimatedGdp = null;
+        let exchangeRate = null;
+        let estimatedGdp = null;
 
-      if (currencyCode && exchangeRates[currencyCode]) {
-        exchangeRate = exchangeRates[currencyCode];
-        const randomMultiplier = getRandomMultiplier();
-        estimatedGdp = (population * randomMultiplier) / exchangeRate;
-      }
+        if (currencyCode && exchangeRates[currencyCode]) {
+          exchangeRate = exchangeRates[currencyCode];
+          const randomMultiplier = getRandomMultiplier();
+          estimatedGdp = (population * randomMultiplier) / exchangeRate;
+        }
 
-      await connection.execute(
-        `INSERT INTO countries 
-          (name, capital, region, population, currency_code, exchange_rate, estimated_gdp, flag_url)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-          ON DUPLICATE KEY UPDATE
-          capital = VALUES(capital),
-          region = VALUES(region),
-          population = VALUES(population),
-          currency_code = VALUES(currency_code),
-          exchange_rate = VALUES(exchange_rate),
-          estimated_gdp = VALUES(estimated_gdp),
-          flag_url = VALUES(flag_url),
-          last_refreshed_at = NOW()`,
-        [
-          name,
-          capital,
-          region,
-          population,
-          currencyCode,
-          exchangeRate,
-          estimatedGdp,
-          flag,
-        ]
-      );
+        await connection.execute(
+          `INSERT INTO countries 
+            (name, capital, region, population, currency_code, exchange_rate, estimated_gdp, flag_url)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE
+            capital = VALUES(capital),
+            region = VALUES(region),
+            population = VALUES(population),
+            currency_code = VALUES(currency_code),
+            exchange_rate = VALUES(exchange_rate),
+            estimated_gdp = VALUES(estimated_gdp),
+            flag_url = VALUES(flag_url),
+            last_refreshed_at = NOW()`,
+          [
+            safe(name),
+            safe(capital),
+            safe(region),
+            safe(population),
+            safe(currencyCode),
+            safe(exchangeRate),
+            safe(estimatedGdp),
+            safe(flag),
+          ]
+        );
 
-      inserted++;
-      if (inserted % 50 === 0) {
-        console.log(`✅ Processed ${inserted}/${countries.length} countries`);
+        inserted++;
+        if (inserted % 50 === 0) {
+          console.log(`✅ Processed ${inserted}/${countries.length} countries`);
+        }
+      } catch (err) {
+        console.error(
+          `❌ Error inserting ${c.name?.common || "Unknown"}:`,
+          err.message
+        );
       }
     }
 
@@ -423,10 +435,9 @@ async function autoRefresh() {
   try {
     console.log("🔄 Auto-refreshing countries data on startup...");
     const response = await axios.post(
-      `${
-        process.env.APP_URL || "http://localhost:${PORT}"
-      }${"/countries/refresh"}`
+      `${process.env.APP_URL || `http://localhost:${PORT}`}/countries/refresh`
     );
+
     console.log("✅ Auto-refresh completed:", response.data);
   } catch (error) {
     console.error("❌ Auto-refresh failed:", error.message);
