@@ -19,6 +19,7 @@ async function initializeDatabase() {
     console.log("🔄 Initializing database tables...");
     const connection = await db.getConnection();
 
+    // Create table
     await connection.execute(`
       CREATE TABLE IF NOT EXISTS countries (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -38,26 +39,33 @@ async function initializeDatabase() {
 
     console.log("✅ Countries table created/verified");
 
-    // Create indexes safely with error handling
-    const indexQueries = [
-      "DROP INDEX IF EXISTS idx_region ON countries",
-      "CREATE INDEX idx_region ON countries(region)",
-      "DROP INDEX IF EXISTS idx_currency_code ON countries",
-      "CREATE INDEX idx_currency_code ON countries(currency_code)",
-      "DROP INDEX IF EXISTS idx_estimated_gdp ON countries",
-      "CREATE INDEX idx_estimated_gdp ON countries(estimated_gdp)",
-      "DROP INDEX IF EXISTS idx_name ON countries",
-      "CREATE INDEX idx_name ON countries(name)",
+    // Create indexes safely
+    const indexDefinitions = [
+      { name: "idx_region", columns: "region" },
+      { name: "idx_currency_code", columns: "currency_code" },
+      { name: "idx_estimated_gdp", columns: "estimated_gdp" },
+      { name: "idx_name", columns: "name" },
     ];
 
-    for (const query of indexQueries) {
+    for (const index of indexDefinitions) {
       try {
-        await connection.query(query);
-      } catch (err) {
-        // Ignore errors for DROP INDEX IF EXISTS (if index doesn't exist)
-        if (err.code !== "ER_BAD_INDEX" && err.code !== "ER_NO_SUCH_INDEX") {
-          throw err;
+        const [existingIndexes] = await connection.query(
+          `SHOW INDEX FROM countries WHERE Key_name = '${index.name}'`
+        );
+
+        if (existingIndexes.length === 0) {
+          await connection.query(
+            `CREATE INDEX ${index.name} ON countries(${index.columns})`
+          );
+          console.log(`✅ Index '${index.name}' created`);
+        } else {
+          console.log(`ℹ️ Index '${index.name}' already exists`);
         }
+      } catch (err) {
+        console.error(
+          `❌ Error checking/creating index '${index.name}':`,
+          err.message
+        );
       }
     }
 
@@ -515,10 +523,10 @@ app.listen(PORT, async () => {
   ensureCacheDir();
   console.log("✅ Cache directory ready");
 
-  // Wait for 5 seconds to ensure DB is ready and routes are loaded
+  // Wait 5 seconds to ensure everything is ready
   await new Promise((r) => setTimeout(r, 5000));
 
-  // Only auto-refresh if not in development or if desired
+  // Only auto-refresh if not in development
   if (process.env.NODE_ENV !== "development") {
     await autoRefresh();
   }
