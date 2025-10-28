@@ -480,6 +480,33 @@ app.delete("/countries/:name", async (req, res) => {
   }
 });
 
+// Auto-refresh on startup (optional for production)
+async function autoRefresh() {
+  try {
+    console.log("🔄 Auto-refreshing countries data on startup...");
+    const response = await axios.post(
+      `${
+        process.env.APP_URL || "http://localhost:${PORT}"
+      }${"/countries/refresh"}`
+    );
+    console.log("✅ Auto-refresh completed:", response.data);
+  } catch (error) {
+    console.error("❌ Auto-refresh failed:", error.message);
+  }
+}
+
+// Call auto-refresh after server starts
+app.listen(PORT, async () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  ensureCacheDir();
+  console.log("✅ Cache directory ready");
+
+  // Only auto-refresh if not in development or if desired
+  if (process.env.NODE_ENV !== "development") {
+    await autoRefresh();
+  }
+});
+
 // Initialize server
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
