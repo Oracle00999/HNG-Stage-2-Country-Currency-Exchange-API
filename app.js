@@ -38,19 +38,26 @@ async function initializeDatabase() {
 
     console.log("✅ Countries table created/verified");
 
-    // Create indexes
+    // Create indexes safely: DROP IF EXISTS then CREATE
+    await connection.execute("DROP INDEX IF EXISTS idx_region ON countries");
+    await connection.execute("CREATE INDEX idx_region ON countries(region)");
+
     await connection.execute(
-      "CREATE INDEX IF NOT EXISTS idx_region ON countries(region)"
+      "DROP INDEX IF EXISTS idx_currency_code ON countries"
     );
     await connection.execute(
-      "CREATE INDEX IF NOT EXISTS idx_currency_code ON countries(currency_code)"
+      "CREATE INDEX idx_currency_code ON countries(currency_code)"
+    );
+
+    await connection.execute(
+      "DROP INDEX IF EXISTS idx_estimated_gdp ON countries"
     );
     await connection.execute(
-      "CREATE INDEX IF NOT EXISTS idx_estimated_gdp ON countries(estimated_gdp)"
+      "CREATE INDEX idx_estimated_gdp ON countries(estimated_gdp)"
     );
-    await connection.execute(
-      "CREATE INDEX IF NOT EXISTS idx_name ON countries(name)"
-    );
+
+    await connection.execute("DROP INDEX IF EXISTS idx_name ON countries");
+    await connection.execute("CREATE INDEX idx_name ON countries(name)");
 
     connection.release();
     console.log("✅ Database indexes created");
@@ -424,7 +431,7 @@ app.get("/status", async (req, res) => {
   }
 });
 
-// Other endpoints remain the same...
+// GET /countries/:name
 app.get("/countries/:name", async (req, res) => {
   try {
     const { name } = req.params;
