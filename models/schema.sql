@@ -14,10 +14,18 @@ CREATE TABLE countries (
     last_refreshed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    UNIQUE KEY unique_name (name)  -- Add unique constraint on name
+    UNIQUE KEY unique_name (name)
 );
 
+-- Safely create indexes (drop first if exists)
+DROP INDEX IF EXISTS idx_region ON countries;
 CREATE INDEX idx_region ON countries(region);
+
+DROP INDEX IF EXISTS idx_currency_code ON countries;
 CREATE INDEX idx_currency_code ON countries(currency_code);
+
+DROP INDEX IF EXISTS idx_estimated_gdp ON countries;
 CREATE INDEX idx_estimated_gdp ON countries(estimated_gdp);
+
+DROP INDEX IF EXISTS idx_name ON countries;
 CREATE INDEX idx_name ON countries(name);
